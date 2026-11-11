@@ -26,6 +26,10 @@ final class Led {
         stopBreathing();
         boolean ok = true;
         for (int i = 0; i < 3; i++) ok &= write(NODES[i], rgb[i]);
+        // The system clears led_switch when the charger is unplugged and when the
+        // screen turns on, which keeps the LED dark whatever color is written.
+        boolean lit = rgb[0] != 0 || rgb[1] != 0 || rgb[2] != 0;
+        if (lit && read("led_switch") != 1) write("led_switch", 1);
         return ok;
     }
 
@@ -42,11 +46,8 @@ final class Led {
         write("breath_led_switch", 1);
     }
 
-    /** Leaves breathing mode, which also clears led_switch, so that is set again. */
     static void stopBreathing() {
-        if (read("breath_led_switch") == 0) return;
-        write("breath_led_switch", 0);
-        write("led_switch", 1);
+        if (read("breath_led_switch") != 0) write("breath_led_switch", 0);
     }
 
     private static boolean write(String node, int value) {
