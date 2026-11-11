@@ -47,6 +47,9 @@ public class LedService extends Service {
     private boolean screenOn = true;
     /** Color index currently breathing, or -1 when not in breathing mode. */
     private int breathingColor = -1;
+    // The LED driver switches the chip off when the console suspends, so the
+    // breathing pattern is only visible while this lock keeps the CPU awake.
+    private PowerManager.WakeLock standbyLock;
 
     private final BroadcastReceiver screenReceiver = new BroadcastReceiver() {
         @Override
@@ -90,7 +93,10 @@ public class LedService extends Service {
         startForeground(1, notification);
         readBattery(registerReceiver(batteryReceiver,
             new IntentFilter(Intent.ACTION_BATTERY_CHANGED)));
-        screenOn = getSystemService(PowerManager.class).isInteractive();
+        PowerManager power = getSystemService(PowerManager.class);
+        standbyLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "pocketled:standby");
+        standbyLock.setReferenceCounted(false);
+        screenOn = power.isInteractive();
         IntentFilter screen = new IntentFilter(Intent.ACTION_SCREEN_ON);
         screen.addAction(Intent.ACTION_SCREEN_OFF);
         registerReceiver(screenReceiver, screen);
@@ -122,6 +128,7 @@ public class LedService extends Service {
             level = previewLevel;
         } else if (plugged) {
             previewLevel = -1;
+            standbyLock.release();
             leaveToSystem();
             handler.postDelayed(tick, REFRESH_MS);
             return;
@@ -136,10 +143,12 @@ public class LedService extends Service {
                 Led.breathe(config.channels(level));
                 breathingColor = color;
             }
+            standbyLock.acquire();
             handler.postDelayed(tick, REFRESH_MS);
             return;
         }
         breathingColor = -1;
+        standbyLock.release();
         if (config.blink(level)) {
             blinkOn = !blinkOn;
             if (blinkOn) Led.set(config.channels(level)); else Led.off();
@@ -184,6 +193,7 @@ public class LedService extends Service {
         handler.removeCallbacks(tick);
         unregisterReceiver(batteryReceiver);
         unregisterReceiver(screenReceiver);
+        standbyLock.release();
         if (plugged) leaveToSystem(); else Led.off();
         super.onDestroy();
     }

@@ -37,8 +37,8 @@ final class Config {
     int brightness() { return prefs.getInt("brightness", 10); }
     void setBrightness(int v) { prefs.edit().putInt("brightness", v).apply(); }
 
-    /** Whether the LED breathes while the screen is off. */
-    boolean standbyBreath() { return prefs.getBoolean("standbyBreath", true); }
+    /** Whether the LED breathes while the screen is off. Off by default: it blocks deep sleep. */
+    boolean standbyBreath() { return prefs.getBoolean("standbyBreath", false); }
     void setStandbyBreath(boolean v) { prefs.edit().putBoolean("standbyBreath", v).apply(); }
 
     /** Battery percentage at or below which the level is "low". */

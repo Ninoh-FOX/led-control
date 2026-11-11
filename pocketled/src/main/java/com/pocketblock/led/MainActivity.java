@@ -67,6 +67,8 @@ public class MainActivity extends Activity {
             apply(-1);
         });
         root.addView(standby, rowParams());
+        text("Para que el LED respire, la consola no entra en suspensión profunda: "
+            + "la batería dura menos en reposo.", 14);
 
         TextView brightnessLabel = text(brightnessText(config.brightness()), 16);
         slider(1, Config.MAX_BRIGHTNESS, config.brightness(), v -> {
