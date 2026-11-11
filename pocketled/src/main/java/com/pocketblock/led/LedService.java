@@ -13,13 +13,11 @@ import android.os.BatteryManager;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
-import android.os.PowerManager;
 import android.os.SystemClock;
 
 /**
  * Keeps the LED showing the color configured for the current battery level.
- * While the charger is plugged in the LED is left to the system's charging light,
- * and while the screen is off it breathes to show the console is in standby.
+ * While the charger is plugged in the LED is left to the system's charging light.
  */
 public class LedService extends Service {
     /** Optional extra: show this level for a few seconds regardless of the battery. */
@@ -43,21 +41,6 @@ public class LedService extends Service {
     private boolean controlling;
     /** What the system had on the LED while charging, to put back after a preview. */
     private int[] systemColor;
-
-    private boolean screenOn = true;
-    /** Color index currently breathing, or -1 when not in breathing mode. */
-    private int breathingColor = -1;
-    // The LED driver switches the chip off when the console suspends, so the
-    // breathing pattern is only visible while this lock keeps the CPU awake.
-    private PowerManager.WakeLock standbyLock;
-
-    private final BroadcastReceiver screenReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            screenOn = Intent.ACTION_SCREEN_ON.equals(intent.getAction());
-            restart();
-        }
-    };
 
     private final BroadcastReceiver batteryReceiver = new BroadcastReceiver() {
         @Override
@@ -93,13 +76,6 @@ public class LedService extends Service {
         startForeground(1, notification);
         readBattery(registerReceiver(batteryReceiver,
             new IntentFilter(Intent.ACTION_BATTERY_CHANGED)));
-        PowerManager power = getSystemService(PowerManager.class);
-        standbyLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "pocketled:standby");
-        standbyLock.setReferenceCounted(false);
-        screenOn = power.isInteractive();
-        IntentFilter screen = new IntentFilter(Intent.ACTION_SCREEN_ON);
-        screen.addAction(Intent.ACTION_SCREEN_OFF);
-        registerReceiver(screenReceiver, screen);
     }
 
     @Override
@@ -128,7 +104,6 @@ public class LedService extends Service {
             level = previewLevel;
         } else if (plugged) {
             previewLevel = -1;
-            standbyLock.release();
             leaveToSystem();
             handler.postDelayed(tick, REFRESH_MS);
             return;
@@ -137,18 +112,6 @@ public class LedService extends Service {
             level = config.levelFor(batteryPercent);
         }
         controlling = true;
-        if (!screenOn && previewLevel < 0 && config.standbyBreath()) {
-            int color = config.color(level);
-            if (color != breathingColor) {
-                Led.breathe(config.channels(level));
-                breathingColor = color;
-            }
-            standbyLock.acquire();
-            handler.postDelayed(tick, REFRESH_MS);
-            return;
-        }
-        breathingColor = -1;
-        standbyLock.release();
         if (config.blink(level)) {
             blinkOn = !blinkOn;
             if (blinkOn) Led.set(config.channels(level)); else Led.off();
@@ -169,12 +132,7 @@ public class LedService extends Service {
         } else {
             int[] current = Led.get();
             if (current != null) systemColor = current;
-            if (breathingColor >= 0 && current != null) {
-                // Back to steady mode, showing whatever the system wrote meanwhile.
-                Led.set(current);
-            }
         }
-        breathingColor = -1;
         controlling = false;
     }
 
@@ -192,8 +150,6 @@ public class LedService extends Service {
     public void onDestroy() {
         handler.removeCallbacks(tick);
         unregisterReceiver(batteryReceiver);
-        unregisterReceiver(screenReceiver);
-        standbyLock.release();
         if (plugged) leaveToSystem(); else Led.off();
         super.onDestroy();
     }

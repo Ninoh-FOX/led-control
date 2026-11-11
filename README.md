@@ -10,10 +10,6 @@ SELinux está en modo permisivo y las apps pueden escribir en los nodos del LED.
 - Tres niveles de batería (normal, baja, crítica) con umbrales configurables.
 - Color y parpadeo por nivel, y brillo global.
 - Mientras la consola carga, el LED se deja al sistema (luz de carga).
-- Opcional: con la pantalla apagada el LED "respira" para indicar el reposo.
-  El driver apaga el LED al suspender, así que esta opción impide la suspensión
-  profunda y gasta más batería en reposo. El chip siempre respira hasta el
-  brillo máximo.
 - Arranca sola al encender la consola.
 
 ## `control_led.sh`

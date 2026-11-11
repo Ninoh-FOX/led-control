@@ -10,7 +10,6 @@ import java.nio.file.Paths;
 final class Led {
     private static final String DIR = "/sys/bus/i2c/drivers/aw2023/5-0045/";
     private static final String[] NODES = {"red", "green", "blue"};
-    private static final int BREATH_SPEED = 1;
 
     private Led() {}
 
@@ -23,7 +22,6 @@ final class Led {
 
     /** Shows a steady {red, green, blue}; returns false if any node could not be written. */
     static boolean set(int[] rgb) {
-        stopBreathing();
         boolean ok = true;
         for (int i = 0; i < 3; i++) ok &= write(NODES[i], rgb[i]);
         // The system clears led_switch when the charger is unplugged and when the
@@ -31,23 +29,6 @@ final class Led {
         boolean lit = rgb[0] != 0 || rgb[1] != 0 || rgb[2] != 0;
         if (lit && read("led_switch") != 1) write("led_switch", 1);
         return ok;
-    }
-
-    /**
-     * Starts the chip's own breathing pattern on the channels that are non-zero in
-     * {red, green, blue}. It keeps running while the console sleeps. The chip always
-     * breathes up to full brightness; the value written only sets the cycle speed.
-     */
-    static void breathe(int[] rgb) {
-        for (int i = 0; i < 3; i++) {
-            write(NODES[i], 0); // no stale steady color left behind the pattern
-            write("breath_" + NODES[i], rgb[i] == 0 ? 0 : BREATH_SPEED);
-        }
-        write("breath_led_switch", 1);
-    }
-
-    static void stopBreathing() {
-        if (read("breath_led_switch") != 0) write("breath_led_switch", 0);
     }
 
     private static boolean write(String node, int value) {

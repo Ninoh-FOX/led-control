@@ -58,18 +58,6 @@ public class MainActivity extends Activity {
         });
         root.addView(enabled, rowParams());
 
-        Switch standby = new Switch(this);
-        standby.setText("Respirar en reposo (pantalla apagada)");
-        standby.setTextSize(18);
-        standby.setChecked(config.standbyBreath());
-        standby.setOnCheckedChangeListener((v, on) -> {
-            config.setStandbyBreath(on);
-            apply(-1);
-        });
-        root.addView(standby, rowParams());
-        text("Para que el LED respire, la consola no entra en suspensión profunda: "
-            + "la batería dura menos en reposo.", 14);
-
         TextView brightnessLabel = text(brightnessText(config.brightness()), 16);
         slider(1, Config.MAX_BRIGHTNESS, config.brightness(), v -> {
             config.setBrightness(v);
